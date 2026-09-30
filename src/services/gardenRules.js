@@ -65,8 +65,8 @@ export function buildTimeline(plantId, careRecords, growthRecords, pestRecords) 
     .map((record) => ({
       id: record.id,
       date: record.date,
-      title: '病虫害记录',
-      detail: `${record.symptom}；${record.recovery || '恢复情况待观察'}`,
+      title: isPestRecovered(record) ? '病虫害 · 已康复' : '病虫害 · 处理中',
+      detail: buildPestDetail(record),
     }))
 
   return [...careItems, ...growthItems, ...pestItems].sort((a, b) => b.date.localeCompare(a.date))
@@ -90,7 +90,7 @@ export function calculateAchievements(plants, careRecords, growthRecords, pestRe
   if (fertilizingCount >= 5) earnedIds.add('fertilizer-care')
   if (bloomingPlants >= 3) earnedIds.add('bloom-garden')
   if (growthRecords.length >= 10) earnedIds.add('growth-watcher')
-  if (pestRecords.length >= 3) earnedIds.add('plant-doctor')
+  if (pestRecords.filter(isPestRecovered).length >= 3) earnedIds.add('plant-doctor')
   if (goals.some((goal) => goal.completed || goal.progressDays >= goal.targetDays)) earnedIds.add('thirty-day-goal')
 
   const provisionalPoints = ACHIEVEMENTS.filter((item) => earnedIds.has(item.id)).reduce(
@@ -170,4 +170,42 @@ function countCurrentStreak(descDates) {
 
 function statusWeight(status) {
   return status === '已过期' ? 2 : status === '待浇水' ? 1 : 0
+}
+
+export function isPestRecovered(record) {
+  return record?.recovered === true
+}
+
+export function getPestStats(pestRecords) {
+  const total = pestRecords.length
+  const recovered = pestRecords.filter(isPestRecovered).length
+  const treating = total - recovered
+  const recoveryRate = total ? Math.round((recovered / total) * 100) : 0
+  return { total, recovered, treating, recoveryRate }
+}
+
+export function getActivePestRecords(pestRecords, plants = []) {
+  const plantMap = new Map(plants.map((plant) => [plant.id, plant]))
+  return pestRecords
+    .filter((record) => !isPestRecovered(record))
+    .map((record) => ({ ...record, plant: plantMap.get(record.plantId) }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export function buildPestArchives(plants, pestRecords) {
+  return plants
+    .map((plant) => {
+      const records = pestRecords
+        .filter((record) => record.plantId === plant.id)
+        .sort((a, b) => b.date.localeCompare(a.date))
+      return { plant, records, stats: getPestStats(records) }
+    })
+    .filter((group) => group.records.length > 0)
+}
+
+export function buildPestDetail(record) {
+  const recoveryText = isPestRecovered(record)
+    ? record.recovery?.trim() || '已康复'
+    : record.recovery?.trim() || '恢复情况待观察'
+  return `${record.symptom}；处理：${record.treatment?.trim() || '待补充'}；恢复：${recoveryText}`
 }

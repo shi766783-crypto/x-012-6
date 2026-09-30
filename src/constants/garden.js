@@ -14,7 +14,7 @@ export const ACHIEVEMENTS = [
   { id: 'fertilizer-care', name: '营养师', description: '完成 5 次施肥记录', points: 25 },
   { id: 'bloom-garden', name: '花开满园', description: '记录 3 株开花植物', points: 35 },
   { id: 'growth-watcher', name: '生长观察员', description: '记录 10 条生长指标', points: 25 },
-  { id: 'plant-doctor', name: '植物医生', description: '记录并处理 3 条病虫害', points: 30 },
+  { id: 'plant-doctor', name: '植物医生', description: '帮助 3 条病虫害记录恢复健康', points: 30 },
   { id: 'thirty-day-goal', name: '坚持 30 天', description: '达成连续 30 天按时浇水目标', points: 60 },
   { id: 'garden-master', name: '园艺大师', description: '总积分达到 180', points: 80 },
 ]

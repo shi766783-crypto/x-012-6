@@ -2,6 +2,7 @@
 import AchievementBoard from './components/AchievementBoard.vue'
 import DashboardPanel from './components/DashboardPanel.vue'
 import Leaderboards from './components/Leaderboards.vue'
+import PestArchive from './components/PestArchive.vue'
 import PlantForm from './components/PlantForm.vue'
 import PlantList from './components/PlantList.vue'
 import ProfileCenter from './components/ProfileCenter.vue'
@@ -17,10 +18,14 @@ const {
   goals,
   achievements,
   leaderboards,
+  pestStats,
+  activePestRecords,
+  pestArchives,
   addPlant,
   addCareRecord,
   addGrowthRecord,
   addPestRecord,
+  updatePestRecord,
   getPlantTimeline,
   getPlantGrowth,
 } = useGardenStore()
@@ -51,6 +56,13 @@ const {
       @care="addCareRecord"
       @growth="addGrowthRecord"
       @pest="addPestRecord"
+    />
+
+    <PestArchive
+      :active-records="activePestRecords"
+      :archives="pestArchives"
+      :stats="pestStats"
+      @update-status="updatePestRecord"
     />
 
     <Leaderboards :leaderboards="leaderboards" />

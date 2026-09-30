@@ -4,11 +4,14 @@ import { todayISO } from '../utils/date'
 import { loadGardenState, saveGardenState } from '../services/storage'
 import {
   buildLeaderboards,
+  buildPestArchives,
   buildTimeline,
   calculateAchievements,
   createId,
+  getActivePestRecords,
   getDashboard,
   getDueWateringPlants,
+  getPestStats,
   getWateringStatus,
   updateWateringGoal,
 } from '../services/gardenRules'
@@ -94,7 +97,26 @@ const demoState = {
       bloomState: '盛开',
     },
   ],
-  pestRecords: [],
+  pestRecords: [
+    {
+      id: 'pest-demo-1',
+      plantId: 'plant-demo-1',
+      date: '2026-09-02',
+      symptom: '叶背出现褐色斑点，疑似红蜘蛛',
+      treatment: '摘除病叶，连续 5 天喷施稀释阿维菌素',
+      recovery: '一周后斑点不再扩散，新叶正常',
+      recovered: true,
+    },
+    {
+      id: 'pest-demo-2',
+      plantId: 'plant-demo-2',
+      date: '2026-09-11',
+      symptom: '嫩梢有蚜虫聚集',
+      treatment: '清水冲洗后喷施苦参碱，每 3 天一次',
+      recovery: '',
+      recovered: false,
+    },
+  ],
   goals: DEFAULT_GOALS,
 }
 
@@ -112,6 +134,9 @@ export function useGardenStore() {
     calculateAchievements(state.plants, state.careRecords, state.growthRecords, state.pestRecords, goals.value),
   )
   const leaderboards = computed(() => buildLeaderboards(state.plants, state.careRecords, state.growthRecords))
+  const pestStats = computed(() => getPestStats(state.pestRecords))
+  const activePestRecords = computed(() => getActivePestRecords(state.pestRecords, state.plants))
+  const pestArchives = computed(() => buildPestArchives(state.plants, state.pestRecords))
 
   watch(
     state,
@@ -145,7 +170,17 @@ export function useGardenStore() {
   }
 
   function addPestRecord(payload) {
-    state.pestRecords.unshift({ ...payload, id: createId('pest') })
+    state.pestRecords.unshift({
+      ...payload,
+      id: createId('pest'),
+      recovered: payload.recovered === true,
+    })
+  }
+
+  function updatePestRecord(id, patch) {
+    const record = state.pestRecords.find((item) => item.id === id)
+    if (!record) return
+    Object.assign(record, patch)
   }
 
   function getPlantTimeline(plantId) {
@@ -166,10 +201,14 @@ export function useGardenStore() {
     goals,
     achievements,
     leaderboards,
+    pestStats,
+    activePestRecords,
+    pestArchives,
     addPlant,
     addCareRecord,
     addGrowthRecord,
     addPestRecord,
+    updatePestRecord,
     getPlantTimeline,
     getPlantGrowth,
   }

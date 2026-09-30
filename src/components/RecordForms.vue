@@ -105,7 +105,8 @@ function handlePhoto(event) {
       <input v-model="pest.date" type="date" />
       <textarea v-model="pest.symptom" required rows="3" placeholder="症状"></textarea>
       <textarea v-model="pest.treatment" rows="3" placeholder="处理方法"></textarea>
-      <textarea v-model="pest.recovery" rows="3" placeholder="恢复情况"></textarea>
+      <textarea v-model="pest.recovery" rows="3" placeholder="恢复情况（可留空，留空按未康复跟进）"></textarea>
+      <p class="form-hint">新记录默认「处理中」，可在防治档案中更新为已康复。</p>
       <button class="secondary-action" type="submit">保存记录</button>
     </form>
   </section>

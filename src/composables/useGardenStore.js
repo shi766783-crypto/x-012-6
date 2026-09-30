@@ -4,6 +4,7 @@ import { todayISO } from '../utils/date'
 import { loadGardenState, saveGardenState } from '../services/storage'
 import {
   buildLeaderboards,
+  buildPestArchive,
   buildTimeline,
   calculateAchievements,
   createId,
@@ -94,7 +95,28 @@ const demoState = {
       bloomState: '盛开',
     },
   ],
-  pestRecords: [],
+  pestRecords: [
+    {
+      id: 'pest-demo-1',
+      plantId: 'plant-demo-2',
+      date: '2026-09-20',
+      symptom: '叶片背面出现白色粉状物，花苞少量脱落',
+      treatment: '剪除病叶，喷洒小苏打溶液，每 3 天一次',
+      recovery: '',
+      status: '处理中',
+      recoveredDate: '',
+    },
+    {
+      id: 'pest-demo-2',
+      plantId: 'plant-demo-1',
+      date: '2026-08-25',
+      symptom: '下部叶片出现褐色斑点并逐渐扩大',
+      treatment: '摘除病叶，加强通风，减少叶面喷水',
+      recovery: '两周后新叶无斑点，长势恢复',
+      status: '已康复',
+      recoveredDate: '2026-09-08',
+    },
+  ],
   goals: DEFAULT_GOALS,
 }
 
@@ -102,12 +124,22 @@ export function useGardenStore() {
   const storedState = loadGardenState()
   const state = reactive(storedState || demoState)
 
+  // 兼容旧数据：恢复状态缺省的记录一律按处理中（未康复）对待
+  if (!Array.isArray(state.pestRecords)) state.pestRecords = []
+  state.pestRecords.forEach((record) => {
+    if (record.status !== '已康复') {
+      record.status = '处理中'
+      record.recoveredDate = record.recoveredDate || ''
+    }
+  })
+
   const plantsWithStatus = computed(() =>
     state.plants.map((plant) => ({ ...plant, wateringStatus: getWateringStatus(plant) })),
   )
   const dueWateringPlants = computed(() => getDueWateringPlants(state.plants))
   const dashboard = computed(() => getDashboard(state.plants, state.careRecords, state.growthRecords))
   const goals = computed(() => updateWateringGoal(state.goals, state.careRecords))
+  const pestArchive = computed(() => buildPestArchive(state.plants, state.pestRecords))
   const achievements = computed(() =>
     calculateAchievements(state.plants, state.careRecords, state.growthRecords, state.pestRecords, goals.value),
   )
@@ -145,7 +177,25 @@ export function useGardenStore() {
   }
 
   function addPestRecord(payload) {
-    state.pestRecords.unshift({ ...payload, id: createId('pest') })
+    state.pestRecords.unshift({
+      recovery: '',
+      status: '处理中',
+      recoveredDate: '',
+      ...payload,
+      id: createId('pest'),
+    })
+  }
+
+  function updatePestStatus(recordId, status, recoveredDate = todayISO()) {
+    const record = state.pestRecords.find((item) => item.id === recordId)
+    if (!record) return
+    record.status = status === '已康复' ? '已康复' : '处理中'
+    record.recoveredDate = record.status === '已康复' ? record.recoveredDate || recoveredDate : ''
+  }
+
+  function updatePestRecovery(recordId, recovery) {
+    const record = state.pestRecords.find((item) => item.id === recordId)
+    if (record) record.recovery = recovery
   }
 
   function getPlantTimeline(plantId) {
@@ -164,12 +214,15 @@ export function useGardenStore() {
     dueWateringPlants,
     dashboard,
     goals,
+    pestArchive,
     achievements,
     leaderboards,
     addPlant,
     addCareRecord,
     addGrowthRecord,
     addPestRecord,
+    updatePestStatus,
+    updatePestRecovery,
     getPlantTimeline,
     getPlantGrowth,
   }

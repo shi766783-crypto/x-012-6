@@ -64,12 +64,51 @@ export function buildTimeline(plantId, careRecords, growthRecords, pestRecords) 
     .filter((record) => record.plantId === plantId)
     .map((record) => ({
       id: record.id,
-      date: record.date,
-      title: '病虫害记录',
-      detail: `${record.symptom}；${record.recovery || '恢复情况待观察'}`,
+      date: record.recoveredDate && getPestStatus(record) === '已康复' ? record.recoveredDate : record.date,
+      title: `病虫害 · ${getPestStatus(record)}`,
+      detail: `${record.symptom}；处理：${record.treatment || '暂未记录'}；恢复：${record.recovery || '待观察'}`,
     }))
 
   return [...careItems, ...growthItems, ...pestItems].sort((a, b) => b.date.localeCompare(a.date))
+}
+
+export function getPestStatus(record) {
+  return record.status === '已康复' ? '已康复' : '处理中'
+}
+
+export function buildPestArchive(plants, pestRecords) {
+  const enriched = pestRecords
+    .map((record) => {
+      const plant = plants.find((item) => item.id === record.plantId)
+      return { ...record, status: getPestStatus(record), plantName: plant ? plant.name : '已移除的植物' }
+    })
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  const total = enriched.length
+  const recovered = enriched.filter((record) => record.status === '已康复')
+  const treating = enriched.filter((record) => record.status === '处理中')
+  const recoveryRate = total ? Math.round((recovered.length / total) * 100) : 0
+
+  const plantArchives = plants
+    .map((plant) => {
+      const records = enriched
+        .filter((record) => record.plantId === plant.id)
+        .sort((a, b) => b.date.localeCompare(a.date))
+      if (!records.length) return null
+      const plantRecovered = records.filter((record) => record.status === '已康复').length
+      return {
+        plantId: plant.id,
+        plantName: plant.name,
+        location: plant.location,
+        records,
+        total: records.length,
+        recovered: plantRecovered,
+        treating: records.length - plantRecovered,
+      }
+    })
+    .filter(Boolean)
+
+  return { total, recovered: recovered.length, treating: treating.length, recoveryRate, treatingRecords: treating, plantArchives }
 }
 
 export function calculateAchievements(plants, careRecords, growthRecords, pestRecords, goals) {
@@ -78,6 +117,7 @@ export function calculateAchievements(plants, careRecords, growthRecords, pestRe
   const bloomingPlants = new Set(
     growthRecords.filter((record) => record.bloomState === '盛开').map((record) => record.plantId),
   ).size
+  const recoveredPestCount = pestRecords.filter((record) => getPestStatus(record) === '已康复').length
   const dashboard = getDashboard(plants, careRecords, growthRecords)
   const earnedIds = new Set()
 
@@ -90,7 +130,7 @@ export function calculateAchievements(plants, careRecords, growthRecords, pestRe
   if (fertilizingCount >= 5) earnedIds.add('fertilizer-care')
   if (bloomingPlants >= 3) earnedIds.add('bloom-garden')
   if (growthRecords.length >= 10) earnedIds.add('growth-watcher')
-  if (pestRecords.length >= 3) earnedIds.add('plant-doctor')
+  if (recoveredPestCount >= 3) earnedIds.add('plant-doctor')
   if (goals.some((goal) => goal.completed || goal.progressDays >= goal.targetDays)) earnedIds.add('thirty-day-goal')
 
   const provisionalPoints = ACHIEVEMENTS.filter((item) => earnedIds.has(item.id)).reduce(
